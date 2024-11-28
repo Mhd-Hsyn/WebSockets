@@ -1,0 +1,143 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WebSocket Call Test</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 20px;
+        }
+        #messages {
+            border: 1px solid #ccc;
+            padding: 10px;
+            height: 300px;
+            overflow-y: auto;
+            margin-bottom: 10px;
+        }
+        .message {
+            margin: 5px 0;
+        }
+        input, button {
+            margin: 5px 0;
+        }
+    </style>
+</head>
+<body>
+    <h1>WebSocket Call Test</h1>
+    <div>
+        <label for="userIdInput">User Data:</label>
+        <input type="text" id="userIdInput" placeholder="Enter your User ID">
+    </div>
+    <div>
+        <label for="channelInput">Channel Name:</label>
+        <input type="text" id="channelInput" placeholder="Enter channel name">
+    </div>
+    <button onclick="joinChannel()">Join Channel</button>
+    <button onclick="leaveChannel()">Leave Channel</button>
+    <div id="messages"></div>
+    <div>
+        <input type="text" id="messageInput" placeholder="Type a message">
+        <button onclick="sendMessage()">Send Message</button>
+    </div>
+
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.3.1/socket.io.js"></script>
+    <script>
+        const socket = io('http://127.0.0.1:8000'); // Adjust the URL if your server is running on a different address
+
+        let user_data = null;
+        let channelName = null;
+
+        // Handle WebSocket connection
+        socket.on('connect', () => {
+            console.log('Connected to server');
+            addMessage('Connected to server');
+        });
+
+        // Listen for "user_joined" event
+        socket.on('user_joined', data => {
+            console.log('User joined:', data);
+            addMessage(`User ${data.user_data} joined the channel.`);
+        });
+
+        // Listen for "user_left" event
+        socket.on('user_left', data => {
+            console.log('User left:', data);
+            addMessage(`User ${data.user_data} left the channel.`);
+        });
+
+        // Listen for "new_message" event
+        socket.on('new_message', data => {
+            console.log('New message:', data);
+            addMessage(`Message from ${data.user_data}: ${data.message}`);
+        });
+
+        // Handle WebSocket disconnection
+        socket.on('disconnect', () => {
+            console.log('Disconnected from server');
+            addMessage('Disconnected from server');
+        });
+
+        // Join a channel
+        function joinChannel() {
+            user_data = document.getElementById('userIdInput').value.trim();
+            channelName = document.getElementById('channelInput').value.trim();
+
+            if (!user_data || !channelName) {
+                alert('User Data and Channel Name are required.');
+                return;
+            }
+
+            // Log the emitted data for debugging
+            console.log('Emitting join_channel:', { user_data: user_data, channel_name: channelName });
+
+            socket.emit('join_channel', { user_data: user_data, channel_name: channelName });
+            addMessage(`You (${user_data}) joined the channel: ${channelName}`);
+        }
+
+
+        // Leave a channel
+        function leaveChannel() {
+            if (!channelName) {
+                alert('You are not in a channel.');
+                return;
+            }
+
+            socket.emit('leave_channel', { user_data: user_data, channel_name: channelName });
+            addMessage(`You (${user_data}) left the channel: ${channelName}`);
+            channelName = null; // Reset channel
+        }
+
+        // Send a message to the channel
+        function sendMessage() {
+            const messageInput = document.getElementById('messageInput');
+            const message = messageInput.value.trim();
+
+            if (!channelName) {
+                alert('You need to join a channel first.');
+                return;
+            }
+
+            if (!message) {
+                alert('Message cannot be empty.');
+                return;
+            }
+
+            socket.emit('send_message', { user_data: user_data, channel_name: channelName, message });
+            addMessage(`You: ${message}`);
+            messageInput.value = ''; // Clear input field
+        }
+
+        // Utility function to add a message to the messages div
+        function addMessage(message) {
+            const messagesDiv = document.getElementById('messages');
+            const newMessage = document.createElement('div');
+            newMessage.className = 'message';
+            newMessage.textContent = message;
+            messagesDiv.appendChild(newMessage);
+            messagesDiv.scrollTop = messagesDiv.scrollHeight; // Auto-scroll to the bottom
+        }
+    </script>
+</body>
+</html>
