@@ -91,18 +91,28 @@
         document.getElementById('join-button').addEventListener('click', () => {
             const channelName = document.getElementById('channel-name').value;
             const userName = document.getElementById('user-name').value;
-            
-            console.log("Channel Name:", channelName); // Add this
-            console.log("User Name:", userName); // Add this
-            
+    
+            console.log("Channel Name:", channelName); // Log channel name for debugging
+            console.log("User Name:", userName); // Log user name for debugging
+    
             if (channelName && userName) {
                 currentChannel = channelName;
                 currentUser = userName;
-
+    
                 // Join the channel via WebSocket
-                socket.emit('join_channel', { channel_name: channelName, user_data: userName });
-
-                // Clear input fields and disable them
+                socket.emit('join_channel', { 
+                    channel_name: channelName, 
+                    user_data: userName 
+                }, (response) => {
+                    // Handle acknowledgment from the server (if needed)
+                    if (response && response.status === 'success') {
+                        console.log(`Successfully joined channel ${channelName}`);
+                    } else {
+                        console.log(`Error joining channel: ${response.message}`);
+                    }
+                });
+    
+                // Disable input fields and button after join
                 document.getElementById('channel-name').disabled = true;
                 document.getElementById('user-name').disabled = true;
                 document.getElementById('join-button').disabled = true;
@@ -110,14 +120,13 @@
                 alert("Please provide both channel name and your name.");
             }
         });
-
     
         // Send message button click event
         document.getElementById('send-message-button').addEventListener('click', () => {
             const message = document.getElementById('message').value;
             if (message && currentChannel) {
                 // Send message via WebSocket
-                socket.emit('send_message', { message: message });
+                socket.emit('send_message', { message: message, channel_name: currentChannel });
                 document.getElementById('message').value = '';
             } else {
                 alert("Please enter a message.");

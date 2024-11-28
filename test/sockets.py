@@ -23,12 +23,13 @@ async def connect(sid, environ, auth):
 
 @sio_server.event
 async def join_channel(sid, data):
-    # Ensure `data` is a dictionary
     if not isinstance(data, dict):
         print(f"Invalid data format received: {data}")
         return
-    
-    # Extract and validate fields
+
+    # Log the received data for debugging
+    print(f"Received join_channel data: {data}")
+
     channel_name = data.get('channel_name')
     user_data = data.get('user_data')
 
@@ -39,17 +40,18 @@ async def join_channel(sid, data):
         print(f"Missing channel_name or user_data in: {data}")
         return
 
-    # Ensure the session is saved properly
     session_data = {'channel_name': channel_name, 'user_data': user_data}
     await sio_server.save_session(sid, session_data)
     print(f"Session saved for {sid}: {session_data}")
-    
-    # Try entering the room, ensure channel_name is not None
+
+    print(f"\n\n sid _________ ", sid, "\n\n")
+
     if channel_name:
         try:
             await sio_server.enter_room(sid, channel_name)
+            print("\n\n Entering room \n\n")
             await sio_server.emit('user_joined', {'user_data': user_data}, room=channel_name, skip_sid=sid)
-            print(f"User {user_data} joined channel {channel_name}")
+            print(f"\n\n COMPLETE JOIN \n\n")
         except Exception as e:
             print(f"Error during room entry: {e}")
     else:
