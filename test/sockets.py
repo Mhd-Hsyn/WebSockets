@@ -33,43 +33,45 @@ async def join_channel(sid, data):
     channel_name = data.get('channel_name')
     user_data = data.get('user_data')
 
-    print("channel_name __________________ ", channel_name)
-    print("user_data __________________ ", user_data)
-
     if not channel_name or not user_data:
         print(f"Missing channel_name or user_data in: {data}")
         return
 
     session_data = {'channel_name': channel_name, 'user_data': user_data}
     await sio_server.save_session(sid, session_data)
-    print(f"Session saved for {sid}: {session_data}")
-
-    print(f"\n\n sid _________ ", sid, "\n\n")
 
     if channel_name:
-        try:
-            await sio_server.enter_room(sid, channel_name)
-            print("\n\n Entering room \n\n")
-            await sio_server.emit('user_joined', {'user_data': user_data}, room=channel_name, skip_sid=sid)
-            print(f"\n\n COMPLETE JOIN \n\n")
-        except Exception as e:
-            print(f"Error during room entry: {e}")
+        sio_server.enter_room(sid, channel_name)
+        await sio_server.emit('user_joined', {'user_data': user_data}, room=channel_name, skip_sid=sid)
+        print(f"\n\n JOIN SUCCESSFULLY ------- {user_data} \n\n")
     else:
         print(f"Error: Channel name is None. Cannot join room.")
 
 @sio_server.event
-async def leave_channel(sid):
+async def leave_channel(sid, data):
     """
     Allow a user to leave a channel and notify other members.
     """
-    session = await sio_server.get_session(sid)
+    try:
+        # Retrieve session data
+        session = await sio_server.get_session(sid)
+    except KeyError:
+        print(f"Session not found for SID {sid}")
+        return
+
+    # Extract channel name and user data from the session
     channel_name = session.get('channel_name')
     user_data = session.get('user_data')
-
+    if not channel_name:
+        channel_name = data.get('channel_name')
     if channel_name:
-        await sio_server.leave_room(sid, channel_name)
+        # Notify other users in the room and leave the room
+        sio_server.leave_room(sid, channel_name)
         await sio_server.emit('user_left', {'user_data': user_data}, room=channel_name)
         print(f'User {user_data} left channel {channel_name}')
+        print(f"\n\n LEFT SUCCESSFULLY ------- {user_data} \n\n")
+    else:
+        print(f"No channel found for SID {sid}")
 
 
 @sio_server.event
@@ -100,6 +102,6 @@ async def disconnect(sid):
     user_data = session.get('user_data')
 
     if channel_name:
-        await sio_server.leave_room(sid, channel_name)
+        sio_server.leave_room(sid, channel_name)
         await sio_server.emit('user_left', {'user_data': user_data}, room=channel_name)
     print(f'{sid} disconnected')

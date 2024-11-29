@@ -58,8 +58,14 @@
             border-radius: 5px;
             cursor: pointer;
         }
+        button.disconnect {
+            background-color: #f44336;
+        }
         button:hover {
             background-color: #45a049;
+        }
+        button.disconnect:hover {
+            background-color: #d32f2f;
         }
     </style>
 </head>
@@ -78,6 +84,7 @@
         <div class="input-group" style="margin-top: 20px;">
             <input type="text" id="message" placeholder="Enter message">
             <button id="send-message-button">Send Message</button>
+            <button id="disconnect-button" class="disconnect">Disconnect</button>
         </div>
     </div>
 
@@ -92,9 +99,6 @@
             const channelName = document.getElementById('channel-name').value;
             const userName = document.getElementById('user-name').value;
     
-            console.log("Channel Name:", channelName); // Log channel name for debugging
-            console.log("User Name:", userName); // Log user name for debugging
-    
             if (channelName && userName) {
                 currentChannel = channelName;
                 currentUser = userName;
@@ -103,16 +107,9 @@
                 socket.emit('join_channel', { 
                     channel_name: channelName, 
                     user_data: userName 
-                }, (response) => {
-                    // Handle acknowledgment from the server (if needed)
-                    if (response && response.status === 'success') {
-                        console.log(`Successfully joined channel ${channelName}`);
-                    } else {
-                        console.log(`Error joining channel: ${response.message}`);
-                    }
                 });
     
-                // Disable input fields and button after join
+                // Disable input fields and button after joining
                 document.getElementById('channel-name').disabled = true;
                 document.getElementById('user-name').disabled = true;
                 document.getElementById('join-button').disabled = true;
@@ -125,13 +122,31 @@
         document.getElementById('send-message-button').addEventListener('click', () => {
             const message = document.getElementById('message').value;
             if (message && currentChannel) {
-                // Send message via WebSocket
-                socket.emit('send_message', { message: message, channel_name: currentChannel });
+                socket.emit('send_message', { message: message });
                 document.getElementById('message').value = '';
             } else {
                 alert("Please enter a message.");
             }
         });
+    
+        // Disconnect button click event
+        document.getElementById('disconnect-button').addEventListener('click', () => {
+            if (currentChannel && currentUser) {
+                // Notify the server about leaving the channel
+                socket.emit('leave_channel', { channel_name: currentChannel });
+
+                // Reset UI and variables
+                currentChannel = null;
+                currentUser = null;
+                document.getElementById('channel-name').disabled = false;
+                document.getElementById('user-name').disabled = false;
+                document.getElementById('join-button').disabled = false;
+                alert("Disconnected from the channel.");
+            } else {
+                alert("You are not connected to any channel.");
+            }
+        });
+
     
         // Listen for user join notifications
         socket.on('user_joined', (data) => {
@@ -160,13 +175,6 @@
             chatBox.appendChild(messageDiv);
             chatBox.scrollTop = chatBox.scrollHeight;
         }
-    
-        // Handle user disconnect
-        window.onbeforeunload = () => {
-            if (currentChannel && currentUser) {
-                socket.emit('leave_channel', { channel_name: currentChannel, user_data: currentUser });
-            }
-        };
     </script>
 </body>
 </html>
